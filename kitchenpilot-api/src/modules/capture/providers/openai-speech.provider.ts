@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI, { toFile } from 'openai';
 import type { SpeechProviderInterface } from '../interfaces/speech-provider.interface';
@@ -16,9 +16,11 @@ export class OpenAISpeechProvider implements SpeechProviderInterface {
   /** Lazy-initialized OpenAI client — avoids crash when no API key is present at startup */
   private get client(): OpenAI {
     if (!this._client) {
-      this._client = new OpenAI({
-        apiKey: this.configService.get<string>('OPENAI_API_KEY', ''),
-      });
+      const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+      if (!apiKey) {
+        throw new ServiceUnavailableException('OPENAI_API_KEY is not configured in the environment');
+      }
+      this._client = new OpenAI({ apiKey });
     }
     return this._client;
   }
